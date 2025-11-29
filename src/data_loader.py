@@ -58,14 +58,37 @@ def collect_historical_data(city: City, years_back: int = 10) -> Optional[pd.Dat
 
 
 def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Create time-based features from datetime index.
+    """Create cyclical time-based features from datetime index.
+    
+    Extracts temporal features from the DataFrame's datetime index and creates
+    cyclical encoding using sine/cosine transformations. This helps the model
+    capture seasonal patterns in weather data.
     
     Args:
-        df: DataFrame with datetime index
-        
+        df: DataFrame with a DatetimeIndex. The index must be datetime type
+            to extract temporal information.
+    
     Returns:
-        DataFrame with added time-based features
+        DataFrame with added columns:
+            - 'day_of_year': Day of year (1-366)
+            - 'month': Month (1-12)
+            - 'day_of_month': Day of month (1-31)
+            - 'day_of_week': Day of week (0=Monday, 6=Sunday)
+            - 'day_of_year_sin': Sine encoding of day of year (range: [-1, 1])
+            - 'day_of_year_cos': Cosine encoding of day of year (range: [-1, 1])
+            - 'month_sin': Sine encoding of month (range: [-1, 1])
+            - 'month_cos': Cosine encoding of month (range: [-1, 1])
+    
+    Note:
+        The original DataFrame is not modified. A copy is returned with
+        additional columns.
+    
+    Example:
+        >>> df = pd.DataFrame({'temp': [10, 15, 20]}, 
+        ...                   index=pd.date_range('2024-01-01', periods=3))
+        >>> df_features = create_time_features(df)
+        >>> 'day_of_year_sin' in df_features.columns
+        True
     """
     df = df.copy()
     df['day_of_year'] = df.index.dayofyear
@@ -80,17 +103,38 @@ def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_data(df: pd.DataFrame) -> Optional[pd.DataFrame]:
-    """
-    Clean and standardize dataset.
+    """Clean, standardize, and enrich weather dataset from Meteostat.
+    
+    This function performs comprehensive data preprocessing including column
+    renaming, missing value handling, time feature creation, and data filtering.
+    The output is ready for model training or prediction.
     
     Args:
-        df: Raw DataFrame from Meteostat
-        
+        df: Raw DataFrame from Meteostat API with columns: tavg, tmin, tmax,
+            prcp, wspd, pres, etc. Must have a DatetimeIndex.
+    
     Returns:
-        Preprocessed DataFrame or None if required columns are missing
-        
+        Preprocessed DataFrame with:
+            - Renamed columns (tavg -> temp_avg, etc.)
+            - Missing values filled with 0
+            - Time-based features added
+            - Rows with all-zero temperatures filtered out
+        Returns None if required temperature columns (temp_avg, temp_min,
+        temp_max) are missing after renaming.
+    
     Raises:
-        ValueError: If input DataFrame is empty
+        ValueError: If the input DataFrame is empty.
+    
+    Note:
+        The function modifies a copy of the input DataFrame. Original data
+        remains unchanged. Rows where all temperature values are zero are
+        removed as they represent invalid data points.
+    
+    Example:
+        >>> raw_df = collect_historical_data(city, years_back=10)
+        >>> processed_df = preprocess_data(raw_df)
+        >>> if processed_df is not None:
+        ...     print(f"Processed {len(processed_df)} valid records")
     """
     if df.empty:
         raise ValueError("Input DataFrame is empty")
@@ -124,20 +168,42 @@ def get_openweather_forecast(
     city: City, 
     days: int = 8
 ) -> Optional[List[Dict[str, float]]]:
-    """
-    Get forecast from OpenWeatherMap API.
+    """Fetch weather forecast from OpenWeatherMap API.
+    
+    Retrieves hourly forecasts for the specified city and aggregates them into
+    daily summaries. Results are cached for 1 hour to reduce API calls.
     
     Args:
-        city: City object with coordinates
-        days: Number of days to forecast (max 8)
-        
+        city: City object containing latitude, longitude, and name. Used to
+            query the OpenWeatherMap API for the specific location.
+        days: Number of forecast days to return (1-8). The API provides up to
+            5 days of hourly forecasts, which are aggregated into daily values.
+            Default is 8 to match the model's forecast horizon.
+    
     Returns:
-        List of forecast dictionaries with date, temp_avg, temp_min, temp_max
-        or None if API call fails
-        
+        List of dictionaries, each containing:
+            - 'date': date object for the forecast day
+            - 'temp_avg': Average temperature in Celsius (mean of hourly temps)
+            - 'temp_min': Minimum temperature in Celsius
+            - 'temp_max': Maximum temperature in Celsius
+        Returns None if the API response is invalid or missing expected data.
+    
     Raises:
-        ValueError: If days is not between 1 and 8
-        requests.RequestException: If API request fails
+        ValueError: If days parameter is not between 1 and 8, or if the API
+            response has an unexpected structure.
+        requests.Timeout: If the API request times out after 10 seconds.
+        requests.RequestException: If the HTTP request fails (network error,
+            invalid API key, etc.).
+    
+    Note:
+        Requires OPENWEATHER_API_KEY to be set in environment variables.
+        The function is cached by Streamlit for 1 hour (3600 seconds) to
+        minimize API usage.
+    
+    Example:
+        >>> forecast = get_openweather_forecast(city, days=7)
+        >>> if forecast:
+        ...     print(f"Forecast for {forecast[0]['date']}: {forecast[0]['temp_avg']}°C")
     """
     if not (1 <= days <= 8):
         raise ValueError(f"days must be between 1 and 8, got {days}")

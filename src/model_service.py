@@ -20,19 +20,35 @@ logger = logging.getLogger(__name__)
 
 
 def load_model_info(city_key: str) -> Tuple[Optional[tf.keras.Model], Optional[Dict]]:
-    """
-    Load model and its feature information.
+    """Load TensorFlow model and its feature information from disk.
+    
+    This function loads a trained Keras model and its associated metadata
+    (feature columns, target columns) for a given city. The model file
+    must be in .keras format and the info file in .pkl format.
     
     Args:
-        city_key: City identifier (e.g., 'paris', 'silicon_valley')
-        
+        city_key: City identifier string (e.g., 'paris', 'silicon_valley').
+            Used to construct file paths: {city_key}_model.keras and
+            {city_key}_info.pkl.
+    
     Returns:
-        Tuple of (model, info_dict) or (None, None) if model not found
-        info_dict contains 'feature_cols' and 'target_cols'
-        
+        Tuple containing:
+            - model: Loaded TensorFlow Keras model, or None if model file
+              doesn't exist.
+            - info: Dictionary with model metadata containing:
+                - 'feature_cols': List of feature column names used during training.
+                - 'target_cols': List of target column names (temperature variables).
+              Returns None if info file doesn't exist or cannot be loaded.
+    
     Raises:
-        FileNotFoundError: If model file doesn't exist
-        ValueError: If model file is corrupted
+        ValueError: If the model file exists but cannot be loaded (corrupted
+            or incompatible format). The error message includes the city_key
+            and original exception details.
+    
+    Example:
+        >>> model, info = load_model_info('paris')
+        >>> if model is not None:
+        ...     print(f"Model loaded with {len(info['feature_cols'])} features")
     """
     model_path = MODELS_BASE_PATH / f'{city_key}_model.keras'
     info_path = MODELS_BASE_PATH / f'{city_key}_info.pkl'
@@ -68,18 +84,40 @@ def prepare_scalers(
     df: pd.DataFrame, 
     expected_features: Optional[List[str]] = None
 ) -> Dict[str, any]:
-    """
-    Prepare scalers for features and targets.
+    """Prepare StandardScaler and MinMaxScaler for features and targets.
+    
+    This function creates and fits scalers for normalizing input features
+    (using StandardScaler) and target variables (using MinMaxScaler).
+    Missing expected features are automatically added with zero values.
     
     Args:
-        df: DataFrame with features and target columns
-        expected_features: List of expected feature column names
-        
+        df: DataFrame containing weather data with datetime index. Must include
+            columns starting with 'temp_' (temp_avg, temp_min, temp_max).
+        expected_features: Optional list of feature column names expected by
+            the model. If provided, missing columns are added with zero values.
+            If None, all numeric columns are used as features.
+    
     Returns:
-        Dictionary with 'X_scaler', 'y_scaler', 'feature_cols', 'target_cols'
-        
+        Dictionary containing:
+            - 'X_scaler': Fitted StandardScaler for input features.
+            - 'y_scaler': Fitted MinMaxScaler for target temperatures.
+            - 'feature_cols': List of feature column names used for scaling.
+            - 'target_cols': List of target column names (temp_avg, temp_min,
+              temp_max).
+    
     Raises:
-        ValueError: If no temperature columns found or DataFrame is empty
+        ValueError: If DataFrame is empty, no temperature columns (temp_*)
+            are found, or no numeric columns are available for scaling.
+    
+    Note:
+        The function modifies the input DataFrame in-place by adding missing
+        columns. Consider passing a copy if the original DataFrame needs to
+        remain unchanged.
+    
+    Example:
+        >>> scalers = prepare_scalers(df, expected_features=['temp_avg', 'pressure'])
+        >>> scaled_X = scalers['X_scaler'].transform(X)
+        >>> scaled_y = scalers['y_scaler'].transform(y)
     """
     if df.empty:
         raise ValueError("DataFrame is empty, cannot prepare scalers")
@@ -124,19 +162,40 @@ def predict_7day_forecast(
     recent_data: np.ndarray,
     scalers: Dict[str, any]
 ) -> np.ndarray:
-    """
-    Predict 7-day temperature forecast.
+    """Generate 7-day temperature forecast using a trained model.
+    
+    This function takes recent weather data, scales it using pre-fitted scalers,
+    and generates predictions for the next 7 days. Only the last WINDOW_SIZE
+    samples from recent_data are used for prediction.
     
     Args:
-        model: Trained TensorFlow model
-        recent_data: Array of recent weather data (shape: [n_samples, n_features])
-        scalers: Dictionary with 'X_scaler' and 'y_scaler'
-        
+        model: Trained TensorFlow Keras model that accepts input shape
+            [batch_size, WINDOW_SIZE, n_features] and outputs predictions
+            of shape [batch_size, FORECAST_HORIZON, n_targets].
+        recent_data: NumPy array of recent weather observations with shape
+            [n_samples, n_features]. Must have at least WINDOW_SIZE rows.
+            Only the last WINDOW_SIZE rows are used for prediction.
+        scalers: Dictionary containing:
+            - 'X_scaler': Fitted StandardScaler for input features.
+            - 'y_scaler': Fitted MinMaxScaler for target temperatures.
+    
     Returns:
-        Array of predictions (shape: [forecast_horizon, n_targets])
-        
+        NumPy array of shape [FORECAST_HORIZON, n_targets] containing
+        temperature predictions. Typically FORECAST_HORIZON=7 and n_targets=3
+        (temp_avg, temp_min, temp_max). Values are in original scale (Celsius)
+        after inverse transformation.
+    
     Raises:
-        ValueError: If input data shape is invalid or scalers are missing
+        ValueError: If recent_data has fewer than WINDOW_SIZE samples, or if
+            the scalers dictionary is missing 'X_scaler' or 'y_scaler' keys.
+            Also raised if model prediction fails (e.g., shape mismatch,
+            model error).
+    
+    Example:
+        >>> model, _ = load_model_info('paris')
+        >>> recent_data = df[features].tail(40).values  # Last 40 days
+        >>> predictions = predict_7day_forecast(model, recent_data, scalers)
+        >>> print(f"7-day forecast shape: {predictions.shape}")  # (7, 3)
     """
     if recent_data.shape[0] < WINDOW_SIZE:
         raise ValueError(

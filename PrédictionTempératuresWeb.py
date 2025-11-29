@@ -1,7 +1,32 @@
-"""
-Multi-City Weather Prediction System - Streamlit Version
-Predicts temperature for Paris and Silicon Valley
-Using Meteostat, trained models, and comparing with OpenWeatherMap forecasts
+"""Multi-City Weather Prediction System - Streamlit Application.
+
+This module provides the main Streamlit web application for the weather
+prediction system. It orchestrates data collection, model inference, and
+visualization to provide interactive 7-day temperature forecasts for multiple
+cities.
+
+The application follows an MVC architecture where:
+    - View: This Streamlit script handles UI rendering and user interactions
+    - Model: Business logic is delegated to src/ modules (data_loader,
+      model_service)
+    - Controller: Configuration and utilities are in src/config and src/utils
+
+Features:
+    - Multi-city support (Paris, Silicon Valley, extensible)
+    - Interactive visualizations with Plotly
+    - Multilingual interface (10+ languages)
+    - Real-time comparison with OpenWeatherMap forecasts
+    - Historical data analysis
+
+Usage:
+    Run the application with:
+        streamlit run PrédictionTempératuresWeb.py
+
+    The application will be available at http://localhost:8501
+
+Requirements:
+    - OPENWEATHER_API_KEY must be set in environment variables or .env file
+    - Trained model files must be present in templates/assets/température/models/
 """
 
 import streamlit as st
