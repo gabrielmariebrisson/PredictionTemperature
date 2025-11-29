@@ -8,13 +8,17 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import load_dotenv
+# Try to import and load dotenv, but don't fail if it's not available (e.g., in tests)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, skip loading .env file
+    # Environment variables should be set directly
+    pass
 
 # Configure logger
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-load_dotenv()
 
 # Get base directory (src/ directory)
 BASE_DIR = Path(__file__).parent.parent.resolve()
