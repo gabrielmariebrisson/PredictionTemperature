@@ -318,7 +318,7 @@ for tab, city_key in zip(tabs, selected_cities):
                         template='plotly_white'
                     )
 
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
 
                     # Data table
                     st.subheader(gettext("📋 Detailed Forecast", lang))
@@ -332,7 +332,7 @@ for tab, city_key in zip(tabs, selected_cities):
                             'OW Max': '{:.1f}°C',
                             'Δ Avg': '{:.1f}°C'
                         }),
-                        use_container_width=True
+                        width='stretch'
                     )
 
                     # Historical data
@@ -356,7 +356,7 @@ for tab, city_key in zip(tabs, selected_cities):
                             template='plotly_white'
                         )
 
-                        st.plotly_chart(fig_hist, use_container_width=True)
+                        st.plotly_chart(fig_hist, width='stretch')
 
                         # Statistics
                         col1, col2 = st.columns(2)

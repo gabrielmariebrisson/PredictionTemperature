@@ -180,14 +180,14 @@ class TestLoadModelInfo:
         mock_info_path = MagicMock(spec=Path)
         mock_info_path.exists.return_value = True
         
-        # Make Path division return appropriate mock
-        def path_div_side_effect(path, other):
-            if 'info' in str(other):
-                return mock_info_path
-            return mock_model_path
+        # Create a custom mock class that properly handles __truediv__
+        class MockPath:
+            def __truediv__(self, other):
+                if 'info' in str(other):
+                    return mock_info_path
+                return mock_model_path
         
-        mock_base_path = MagicMock(spec=Path)
-        mock_base_path.__truediv__ = MagicMock(side_effect=path_div_side_effect)
+        mock_base_path = MockPath()
         
         # Patch MODELS_BASE_PATH
         with patch('src.model_service.MODELS_BASE_PATH', mock_base_path):

@@ -49,9 +49,36 @@ _mock_streamlit.cache_data = lambda **kwargs: lambda func: func
 _mock_streamlit.cache_resource = lambda **kwargs: lambda func: func
 sys.modules["streamlit"] = _mock_streamlit
 
-# 3.2. Mocker tensorflow (optionnel, mais utile si on veut éviter de charger TensorFlow)
-# On peut aussi laisser TensorFlow s'importer normalement si on veut tester avec de vrais modèles
-# Pour l'instant, on ne mock pas tensorflow car les tests utilisent de vrais mocks de modèles
+# 3.2. Mocker tensorflow AVANT l'import des modules src
+# On mock TensorFlow pour éviter ModuleNotFoundError si TensorFlow n'est pas installé
+# dans l'environnement Python utilisé par pytest
+# Les tests utilisent des mocks de modèles, donc on n'a pas besoin de TensorFlow réel
+
+# Vérifier si TensorFlow est déjà dans sys.modules (déjà importé)
+if "tensorflow" not in sys.modules:
+    # Essayer d'importer TensorFlow
+    try:
+        import tensorflow as tf
+        # Si TensorFlow est disponible, on le laisse tel quel
+        # Les tests pourront l'utiliser normalement
+        _tensorflow_available = True
+    except ImportError:
+        # Si TensorFlow n'est pas disponible, on le mock complètement
+        _tensorflow_available = False
+        _mock_tf = MagicMock()
+        _mock_keras = MagicMock()
+        _mock_keras_models = MagicMock()
+        _mock_keras_models.load_model = MagicMock()
+        
+        # Créer une structure de mock qui ressemble à TensorFlow
+        _mock_tf.keras = _mock_keras
+        _mock_keras.Model = MagicMock()
+        _mock_keras.models = _mock_keras_models
+        
+        # Installer le mock dans sys.modules AVANT que les modules src ne soient importés
+        sys.modules["tensorflow"] = _mock_tf
+        sys.modules["tensorflow.keras"] = _mock_keras
+        sys.modules["tensorflow.keras.models"] = _mock_keras_models
 
 # 3.3. Mocker deep_translator (optionnel)
 _mock_google_translator = MagicMock()

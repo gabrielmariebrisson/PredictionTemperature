@@ -175,19 +175,29 @@ Cette séparation facilite la maintenance, les tests et l'évolution du code.
 
 ### Exécuter les tests
 
+**Important** : Assurez-vous d'être dans l'environnement conda `PredictionTemperature` et utilisez `python -m pytest` au lieu de `pytest` directement pour garantir l'utilisation du bon interpréteur Python.
+
 ```bash
-# Tous les tests
-pytest
+# Activer l'environnement conda (si nécessaire)
+conda activate PredictionTemperature
+
+# Tous les tests (recommandé : utiliser python -m pytest)
+python -m pytest
+
+# Ou utiliser le script fourni
+./run_tests.sh
 
 # Avec couverture
-pytest --cov=src --cov-report=html
+python -m pytest --cov=src --cov-report=html
 
 # Un fichier spécifique
-pytest tests/test_data_loader.py
+python -m pytest tests/test_data_loader.py
 
 # Mode verbeux
-pytest -v
+python -m pytest -v
 ```
+
+**Note** : Si vous obtenez une erreur `ModuleNotFoundError: No module named 'tensorflow'`, cela signifie que pytest utilise un mauvais interpréteur Python. Utilisez `python -m pytest` au lieu de `pytest` directement.
 
 ### Structure des tests
 
