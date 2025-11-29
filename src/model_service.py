@@ -4,8 +4,8 @@ Handles TensorFlow model loading, scaling, and prediction
 """
 
 import logging
-import os
 import pickle
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -34,15 +34,15 @@ def load_model_info(city_key: str) -> Tuple[Optional[tf.keras.Model], Optional[D
         FileNotFoundError: If model file doesn't exist
         ValueError: If model file is corrupted
     """
-    model_path = os.path.join(MODELS_BASE_PATH, f'{city_key}_model.keras')
-    info_path = os.path.join(MODELS_BASE_PATH, f'{city_key}_info.pkl')
+    model_path = MODELS_BASE_PATH / f'{city_key}_model.keras'
+    info_path = MODELS_BASE_PATH / f'{city_key}_info.pkl'
 
-    if not os.path.exists(model_path):
+    if not model_path.exists():
         logger.warning(f"Model not found at {model_path}")
         return None, None
 
     try:
-        model = tf.keras.models.load_model(model_path)
+        model = tf.keras.models.load_model(str(model_path))
         logger.info(f"Successfully loaded model for {city_key}")
     except Exception as e:
         logger.error(f"Error loading model from {model_path}: {e}")
@@ -50,7 +50,7 @@ def load_model_info(city_key: str) -> Tuple[Optional[tf.keras.Model], Optional[D
 
     # Load feature info if available
     info = None
-    if os.path.exists(info_path):
+    if info_path.exists():
         try:
             with open(info_path, 'rb') as f:
                 info = pickle.load(f)

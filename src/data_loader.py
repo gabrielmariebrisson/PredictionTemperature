@@ -19,7 +19,7 @@ from src.config import City, OPENWEATHER_API_KEY
 logger = logging.getLogger(__name__)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, persist=True)
 def collect_historical_data(city: City, years_back: int = 10) -> Optional[pd.DataFrame]:
     """
     Collect historical weather data from Meteostat.
@@ -142,10 +142,7 @@ def get_openweather_forecast(
     if not (1 <= days <= 8):
         raise ValueError(f"days must be between 1 and 8, got {days}")
     
-    if not OPENWEATHER_API_KEY:
-        logger.error("OPENWEATHER_API_KEY is not set")
-        raise ValueError("OPENWEATHER_API_KEY is not configured")
-    
+    # OPENWEATHER_API_KEY is validated at startup in config.py
     url = "http://api.openweathermap.org/data/2.5/forecast"
     params = {
         'lat': city.lat,

@@ -3,15 +3,34 @@ Configuration module for Multi-City Weather Prediction System
 Contains City dataclass, cities dictionary, languages, and constants
 """
 
+import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
 from dotenv import load_dotenv
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
-# API Keys
+# Get base directory (src/ directory)
+BASE_DIR = Path(__file__).parent.parent.resolve()
+
+# API Keys - Validate at startup
 OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
+if not OPENWEATHER_API_KEY:
+    error_msg = (
+        "OPENWEATHER_API_KEY is not set. "
+        "Please set it in your .env file or environment variables. "
+        "The application requires this key to fetch weather forecasts."
+    )
+    logger.error(error_msg)
+    raise ValueError(error_msg)
+
+logger.info("OPENWEATHER_API_KEY loaded successfully")
 
 # City Configuration
 @dataclass
@@ -31,8 +50,8 @@ CITIES = {
 WINDOW_SIZE = 30
 FORECAST_HORIZON = 7
 
-# Models base path
-MODELS_BASE_PATH = 'templates/assets/température/models/'
+# Models base path - Dynamic path relative to project root
+MODELS_BASE_PATH = BASE_DIR / 'templates' / 'assets' / 'température' / 'models'
 
 # Languages Configuration
 LANGUAGES = {

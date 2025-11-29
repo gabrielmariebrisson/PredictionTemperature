@@ -202,8 +202,8 @@ for tab, city_key in zip(tabs, selected_cities):
                 recent_data = df[expected_features].tail(WINDOW_SIZE).values
 
                 # Vérifier que le modèle existe
-                model_path = os.path.join(MODELS_BASE_PATH, f'{city_key}_model.keras')
-                if os.path.exists(model_path):
+                model_path = MODELS_BASE_PATH / f'{city_key}_model.keras'
+                if model_path.exists():
                     # Make prediction
                     model_pred = predict_7day_forecast(model, recent_data, scalers)
 
