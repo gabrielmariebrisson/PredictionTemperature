@@ -109,7 +109,7 @@ Output (7 jours × 3 variables: avg, min, max)
 ### Installation avec Docker
 
 ```bash
-# Construire l'image
+# Construire l'image (première fois : ~8-13 minutes)
 docker build -t prediction-temperature:latest .
 
 # Lancer le conteneur
@@ -120,10 +120,17 @@ docker run -d \
   prediction-temperature:latest
 ```
 
-Ou avec Docker Compose :
+Ou avec Docker Compose (recommandé) :
 ```bash
+# Construire et lancer en une commande
+docker-compose up -d --build
+
+# Ou séparément
+docker-compose build
 docker-compose up -d
 ```
+
+**Note** : Le premier build prend du temps car TensorFlow (~500MB) doit être téléchargé. Les builds suivants sont beaucoup plus rapides grâce au cache Docker.
 
 ## 📁 Structure du Projet
 

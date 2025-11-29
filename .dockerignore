@@ -39,18 +39,27 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Tests
+# Tests (exclure pour réduire la taille du contexte)
 tests/
 pytest.ini
+requirements-dev.txt
 
-# Documentation
+# Documentation (garder README.md pour référence)
 *.md
 !README.md
 
-# Jupyter
+# Jupyter (notebooks peuvent être très volumineux)
 *.ipynb
 .ipynb_checkpoints
 
 # Logs
 *.log
+
+# Docker files (éviter la récursion)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github/
 

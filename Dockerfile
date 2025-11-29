@@ -1,7 +1,11 @@
 # Multi-stage build for optimized Streamlit + TensorFlow image
+# Optimisé pour maximiser l'utilisation du cache Docker
+
+# Stage 1: Builder avec toutes les dépendances de build
 FROM python:3.11-slim as builder
 
 # Install system dependencies needed for TensorFlow and build tools
+# Cette couche sera mise en cache si les dépendances système ne changent pas
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
@@ -12,16 +16,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy requirements and install Python dependencies
+# Upgrade pip first (cached layer)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Copy requirements FIRST - cette couche sera mise en cache si requirements.txt ne change pas
+# C'est la clé pour accélérer les builds : les dépendances ne seront réinstallées 
+# que si requirements.txt change
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /tmp/requirements.txt && \
-    rm /tmp/requirements.txt
+
+# Install Python dependencies
+# Le cache Docker standard fonctionne très bien ici - pas besoin de BuildKit
+# Les dépendances seront mises en cache si requirements.txt ne change pas
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Final stage - minimal runtime image
 FROM python:3.11-slim
 
-# Install only runtime dependencies
+# Install only runtime dependencies (cached layer)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
@@ -34,8 +45,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Set working directory
 WORKDIR /app
 
-# Copy application code
-COPY . .
+# Copy application code LAST - cette couche change souvent mais ne nécessite pas
+# de réinstaller les dépendances si seul le code change
+COPY src/ ./src/
+COPY templates/ ./templates/
+COPY PrédictionTempératuresWeb.py ./
 
 # Create non-root user for security
 RUN useradd -m -u 1000 streamlit && \
